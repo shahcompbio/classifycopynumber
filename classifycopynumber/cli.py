@@ -26,6 +26,7 @@ def main(genes_gtf, remixt_h5_filename=None, hmmcopy_csv_filename=None):
 # metadata paths are wrong: use package data instead
 # change output paths
 
+### this could be broken out into a function that creates a table of interesting genes
     amp_genes = pd.read_csv('../../metadata/Census_ampThu Apr 16 15_35_36 2020.csv')
     amp_genes['cn_type'] = 'amplification'
 
@@ -90,8 +91,10 @@ def main(genes_gtf, remixt_h5_filename=None, hmmcopy_csv_filename=None):
     cgc_genes = cgc_genes.merge(genes, how='left')
 
     assert not cgc_genes['gene_start'].isnull().any()
+###
 
 
+### Break out into 'classify.py'
     ##
     # Aggegate cn data
     ##
@@ -197,7 +200,11 @@ def main(genes_gtf, remixt_h5_filename=None, hmmcopy_csv_filename=None):
     hdel_data = hdel_data.merge(cgc_genes[gene_cols].query('cn_type == "deletion"').drop_duplicates())
 
     hdel_data.to_csv('../data/hdels.csv.gz', index=False)
+####
 
+
+
+### Plots in a separate method
 
     ##
     # Plots
