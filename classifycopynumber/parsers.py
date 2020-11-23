@@ -46,10 +46,12 @@ def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
 def read_hmmcopy(filename, filter_normal=False):
     """ Read hmmcopy data, filter normal cells and aggregate into segments
     """
+    print("K\n\n\n")
     data = pd.read_csv(
         filename,
         usecols=['chr', 'start', 'end', 'width', 'state', 'copy', 'reads', 'cell_id'],
         dtype={'chr': 'category', 'cell_id': 'category'})
+    print("K\n\n\n")
 
     # Filter normal cells that are approximately diploid
     if filter_normal:
@@ -58,6 +60,7 @@ def read_hmmcopy(filename, filter_normal=False):
             .groupby('cell_id')['state']
             .agg(['mean', 'std'])
             .reset_index())
+        print("K\n\n\n")
 
         cell_stats['is_normal'] = (
             (cell_stats['mean'] > 1.95) &
@@ -67,6 +70,7 @@ def read_hmmcopy(filename, filter_normal=False):
         data = data.merge(cell_stats[['cell_id', 'is_normal']], how='left')
 
         data = data[~data['is_normal']]
+    print("K\n\n\n")
 
     # Aggregate cell copy number
     data = (
@@ -115,3 +119,41 @@ def read_gene_data(gtf):
 
     return data
 
+
+def compile_genes_of_interest(gene_regions, amp_genes='../../metadata/Census_ampThu Apr 16 15_35_36 2020.csv', 
+    del_genes='../../metadata/Census_delsThu Apr 16 15_36_24 2020.csv', 
+    additional_genes='../../metadata/additional_genes.csv', 
+    antigen_genes='../../antigen_presenting_genes',
+    hr_genes='../../metadata/hr_genes.txt'):
+
+    amp_genes = amp_genes = pd.read_csv('../../metadata/Census_ampThu Apr 16 15_35_36 2020.csv', usecols=['Gene Symbol', 'cn_type', 'Tumour Types(Somatic)'])
+    del_genes = pd.read_csv('../../metadata/Census_delsThu Apr 16 15_36_24 2020.csv', usecols=['Gene Symbol', 'cn_type', 'Tumour Types(Somatic)'])
+
+    amp_genes['cn_type'] = 'amplification'
+    del_genes['cn_type'] = 'deletion'
+
+    cgc_genes = pd.concat([amp_genes, del_genes], ignore_index=False)
+    cgc_genes = cgc_genes.rename(columns={'Gene Symbol': 'gene_name'})
+
+    if additional_genes:
+        cgc_genes = pd.concat(cgc_genes, pd.read_csv(additional_genes, sep="\t"))
+    if hr_genes:
+        cgc_genes = pd.concat(cgc_genes, pd.read_csv(hr_genes, sep="\t"))
+    if antigen_presenting_genes:
+        cgc_genes = pd.concat(cgc_genes, pd.read_csv(antigen_genes, sep="\t"))
+
+    cgc_genes["gene_name"] = cgc_genes.gene_name.replace({'NSD3': 'WHSC1L1','MRE11': 'MRE11A','SEM1': 'SHFM1' })
+
+    gene_rename = {
+        'NSD3': 'WHSC1L1',
+        'MRE11': 'MRE11A',
+        'SEM1': 'SHFM1',
+    }
+    cgc_genes['gene_name'] = cgc_genes['gene_name'].apply(lambda a: gene_rename.get(a, a))
+
+    #gene regions = gtf
+    cgc_genes = cgc_genes.merge(gene_regions, how='left')
+
+    assert not cgc_genes['gene_start'].isnull().any()
+
+    return cgc_genes

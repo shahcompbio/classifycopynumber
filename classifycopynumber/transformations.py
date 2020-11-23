@@ -39,7 +39,7 @@ def aggregate_adjacent(cnv, value_cols=(), stable_cols=(), length_normalized_col
             a[col] = df[col].sum()
 
         return a
-
+    print(cnv)
     aggregated = cnv.groupby('cn_group').apply(agg_segments)
 
     for col in aggregated:
