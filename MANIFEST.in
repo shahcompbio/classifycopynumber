@@ -1,0 +1,6 @@
+include classifycopynumber/metadata/additional_genes.csv
+include classifycopynumber/metadata/antigen_presenting_genes.csv
+include classifycopynumber/metadata/cancer_gene_census.csv
+include classifycopynumber/metadata/census_amps.csv
+include classifycopynumber/metadata/census_dels.csv
+include classifycopynumber/metadata/hr_genes.txt

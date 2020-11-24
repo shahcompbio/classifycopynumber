@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 def aggregate_adjacent(cnv, value_cols=(), stable_cols=(), length_normalized_cols=(), summed_cols=()):
     """ Aggregate adjacent segments with similar copy number state.
@@ -26,8 +27,7 @@ def aggregate_adjacent(cnv, value_cols=(), stable_cols=(), length_normalized_col
 
     def agg_segments(df):
         a = df[stable_cols].iloc[0]
-
-        a['chr'] = df['chr'].min()
+        a['chr'] = df['chr'].iloc[0] # can't be min chr is str
         a['start'] = df['start'].min()
         a['end'] = df['end'].max()
         a['width'] = df['width'].sum()
@@ -37,11 +37,9 @@ def aggregate_adjacent(cnv, value_cols=(), stable_cols=(), length_normalized_col
 
         for col in summed_cols:
             a[col] = df[col].sum()
+        return pd.Series(a)
 
-        return a
-    print(cnv)
     aggregated = cnv.groupby('cn_group').apply(agg_segments)
-
     for col in aggregated:
         aggregated[col] = aggregated[col].astype(cnv[col].dtype)
 

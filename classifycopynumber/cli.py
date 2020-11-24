@@ -10,7 +10,6 @@ import os
 
 @click.option('--remixt_h5_filename', help='Remixt H5')
 @click.option('--hmmcopy_csv_filename', help='hmmcopy csv')
-# @click.option('--results_dir', help='dir for results')
 @click.option('--plot', help='bool to generate plots')
 
 def main(genes_gtf, results_dir, remixt_h5_filename=None, hmmcopy_csv_filename=None, plot=False):
@@ -20,17 +19,22 @@ def main(genes_gtf, results_dir, remixt_h5_filename=None, hmmcopy_csv_filename=N
         raise click.ClickException('One of remixt_h5_filename, hmmcopy_csv_filename required')
 
     if remixt_h5_filename is not None:
-        cn, _ = classifycopynumber.parsers.read_remixt(remixt_h5_filename)
+        cn, stats = classifycopynumber.parsers.read_remixt(remixt_h5_filename)
+        cn_cols = ['major_raw','minor_raw', 'copy','major_1',
+        'minor_1','major_2','minor_2']
+        ploidy = stats["ploidy"]
 
     elif hmmcopy_csv_filename is not None:
-        cn, _ = classifycopynumber.parsers.read_hmmcopy(hmmcopy_csv_filename)
-    print("elkblkfb\n\n\n")
-    cn = classifycopynumber.classify.aggregate_cn_data(cn_data)
-    genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest(genes)
-    gene_cn = classifycopynumber.classify.calculate_gene_cn_data(cn, genes_of_interest)
+        cn, ploidy = classifycopynumber.parsers.read_hmmcopy(hmmcopy_csv_filename)
+        cn_cols=["state", "copy"]
 
-    amp_genes = classifycopynumber.classify.label_amplifications(gene_cn)
-    hdel_genes = classifycopynumber.classify.label_hdels(gene_cn)
+    # cn = classifycopynumber.classify.aggregate_cn_data(cn)
+    genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest(genes)
+
+    gene_cn = classifycopynumber.classify.calculate_gene_cn_data(cn, genes_of_interest, cn_cols)
+    print(gene_cn)
+    amp_genes = classifycopynumber.classify.label_amplifications(gene_cn, ploidy)
+    hdel_genes = classifycopynumber.classify.label_hdels(gene_cn, ploidy)
 
     amp_genes.to_csv(os.path.join(results_dir, "amplified_genes.tsv"))
     hdel_genes.to_csv(os.path.join(results_dir, "deleted_genes.tsv"))
@@ -48,6 +52,3 @@ def main(genes_gtf, results_dir, remixt_h5_filename=None, hmmcopy_csv_filename=N
         classifycopynumber.plots.plot_log_change(hdel_genes, log_change_plot)
 
     from IPython import embed; embed(); raise
-
-
-# main("/home/mcphersa1/work/apolloanalysis/metadata/Homo_sapiens.GRCh37.73.gtf.gz",  "/juno/work/shah/abramsd/CODE/classif_copynumber/classifycopynumber/tests/results", hmmcopy_csv_filename="/work/shah/tantalus/SC-2640/results/hmmcopy/A96213A_reads.csv.gz", plot=True)

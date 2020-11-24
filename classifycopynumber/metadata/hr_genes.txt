@@ -1,4 +1,4 @@
-Gene_Name
+gene_name
 BLM
 BRCA2
 EME1
