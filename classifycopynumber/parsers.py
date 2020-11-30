@@ -118,7 +118,7 @@ def read_hmmcopy(filename, filter_normal=False, group_label_col='cell_id'):
 
     data['chr'] = data['chr'].astype(str)
     data = data.rename(columns={"chr":"chromosome"})
-    ploidy = data.copy/data.width
+    ploidy = data["copy"]/data.width
     return data.reset_index(), ploidy.mean()
 
 
