@@ -13,6 +13,9 @@ import os
 @click.option('--plot', help='bool to generate plots')
 
 def main(genes_gtf, results_dir, remixt_h5_filename=None, hmmcopy_csv_filename=None, plot=False):
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+
     genes = classifycopynumber.parsers.read_gene_data(genes_gtf)
 
     if remixt_h5_filename is None and hmmcopy_csv_filename is None:
@@ -32,23 +35,31 @@ def main(genes_gtf, results_dir, remixt_h5_filename=None, hmmcopy_csv_filename=N
     genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest(genes)
 
     gene_cn = classifycopynumber.classify.calculate_gene_cn_data(cn, genes_of_interest, cn_cols)
-    print(gene_cn)
+    print(gene_cn["copy"])
     amp_genes = classifycopynumber.classify.label_amplifications(gene_cn, ploidy)
-    hdel_genes = classifycopynumber.classify.label_hdels(gene_cn, ploidy)
+    hdel_genes = classifycopynumber.classify.label_deletions(gene_cn, ploidy)
 
     amp_genes.to_csv(os.path.join(results_dir, "amplified_genes.tsv"))
     hdel_genes.to_csv(os.path.join(results_dir, "deleted_genes.tsv"))
 
-    if plots:
+    if plot:
         plots_dir = os.path.join(results_dir, "plots")
-        
-        log_change_plot = os.path.join(plots_dir, "log_change.png")
+        if not os.path.exists(plots_dir):
+            os.makedirs(plots_dir)
+        log_change_plot = os.path.join(plots_dir, "log_change_amplification_genes.png")
         classifycopynumber.plots.plot_log_change(amp_genes, log_change_plot)
 
-        log_change_plot = os.path.join(plots_dir, "amp_matrix.png")
-        classifycopynumber.plots.plot_amp_matrix(amp_genes, log_change_plot)
+        amp_genes = amp_genes[amp_genes.pass_filter==True]
+        log_change_plot = os.path.join(plots_dir, "log_change_amplified_amplification_genes.png")
+        classifycopynumber.plots.plot_log_change(amp_genes, log_change_plot)
 
-        log_change_plot = os.path.join(plots_dir, "hdels.png")
+        # log_change_plot = os.path.join(plots_dir, "amp_matrix.png")
+        # classifycopynumber.plots.plot_amp_matrix(amp_genes, log_change_plot)
+
+        log_change_plot = os.path.join(plots_dir, "log_change_hdel_genes.png")
         classifycopynumber.plots.plot_log_change(hdel_genes, log_change_plot)
 
-    from IPython import embed; embed(); raise
+        hdel_genes = hdel_genes[hdel_genes.pass_filter==True]
+        log_change_plot = os.path.join(plots_dir, "log_change_hdel_deleted_genes.png")
+        classifycopynumber.plots.plot_log_change(hdel_genes, log_change_plot)
+    # from IPython import embed; embed(); raise

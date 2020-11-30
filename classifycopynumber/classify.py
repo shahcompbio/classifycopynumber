@@ -1,10 +1,8 @@
 import wgs_analysis.algorithms.cnv
 import numpy as np
 
-def label_amplifications(data, ploidy):
 
-    data=data[data.cn_type=="amplification"]
-
+def calculate_log_change(data, ploidy):
     normalize = (
         data.groupby('gene_name')['overlap_width']
         .sum().rename('sum_overlap_width').reset_index())
@@ -14,20 +12,51 @@ def label_amplifications(data, ploidy):
     data = data.groupby(['gene_name'])['total_raw_weighted'].sum().reset_index()
     data = data.merge(normalize)
     data['total_raw_mean'] = data['total_raw_weighted'] / data['sum_overlap_width']
+    data['log_change'] = np.log2(data['total_raw_mean']/ploidy)
+    return data[["gene_name", "total_raw_mean", "total_raw_weighted", "log_change"]]
 
-    data['log_change'] = np.log2(data['total_raw_mean'], ploidy)
+
+def label_amplifications(data, ploidy):
+
+    data=data[data.cn_type=="amplification"]
+
+    data = data.merge(calculate_log_change(data, ploidy), on="gene_name")
+    # normalize = (
+    #     data.groupby('gene_name')['overlap_width']
+    #     .sum().rename('sum_overlap_width').reset_index())
+
+    # data['total_raw_weighted'] = data['copy'] * data['overlap_width']
+
+    # data = data.groupby(['gene_name'])['total_raw_weighted'].sum().reset_index()
+    # data = data.merge(normalize)
+    # data['total_raw_mean'] = data['total_raw_weighted'] / data['sum_overlap_width']
+    # data['log_change'] = np.log2(data['total_raw_mean'])/ploidy
+    data["pass_filter"] =  data.log_change > 1
 
     return data
+
 
 def label_deletions(data, ploidy):
 
     data=data[data.cn_type=="deletion"]
-    data = data[data['copy'] < 0.5]
-    data = data.groupby(['gene_id'])['overlap_width'].sum().rename('hdel_width').reset_index()
-    data = data[data['hdel_width'] > 10000]
-    data['sample'] = sample
+    print(data["copy"])
+    data = data.merge(calculate_log_change(data, ploidy), on="gene_name")
+    print(data["copy"])
+    data["pass_filter"] = data["copy"] < 0.5
+    # data = data[data['copy'] < 0.5]
+    
+    # normalize = data.groupby(['gene_name'])['overlap_width'].sum().rename('sum_overlap_width').reset_index()
+
+    # data['total_raw_weighted'] = data['copy'] * data['overlap_width']
+
+    # data = data.groupby(['gene_name'])['total_raw_weighted'].sum().reset_index()
+    # data = data.merge(normalize)
+    # data['total_raw_mean'] = data['total_raw_weighted'] / data['sum_overlap_width']
+    # data['log_change'] = np.log2(data['total_raw_mean'])/ploidy
+    # data = data[data['sum_overlap_width'] > 10000]
 
     return data
+
 
 # def label_hdels(genes_cn_data):
 

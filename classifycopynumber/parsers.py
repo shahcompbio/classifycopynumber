@@ -7,6 +7,7 @@ import pkg_resources
 def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
     with pd.HDFStore(filename) as store:
         stats = store['stats']
+        brk_cn = store["brk_cn"]
 
         stats = stats[stats['proportion_divergent'] < max_divergence]
 
@@ -44,7 +45,7 @@ def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
 
         # cn['width'] = cn['gene_end'] - cn['gene_start']
         cn['total_raw'] = cn['major_raw'] + cn['minor_raw']
-        
+        print(cn.total_raw)
         cn=cn.rename(columns={"total_raw":"copy"})
         # print(stats)
         # cn = cn.merge(stats[['sample', 'ploidy']])
