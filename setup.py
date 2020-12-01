@@ -10,11 +10,11 @@ dependencies = ['click']
 # classifycopynumber/metadata/Census_ampThu Apr 16 15_35_36 2020.csv
 # classifycopynumber/metadata/Census_delsThu Apr 16 15_36_24 2020.csv
 # classifycopynumber/metadata/hr_genes.txt
-package_data = package_data={'amp_genes': 'classifycopynumber/metadata/Census_ampThu Apr 16 15_35_36 2020.csv', 
-    'del_genes':'classifycopynumber/metadata/Census_delsThu Apr 16 15_36_24 2020.csv',
-    'additional_genes': 'classifycopynumber/metadata/additional_genes.csv',
-    'antigen_presenting_genes':'classifycopynumber/metadata/antigen_presenting_genes.csv',
-    'hr_genes':'classifycopynumber/metadata/hr_genes.txt'}
+# package_data = package_data={'amp_genes': 'classifycopynumber/metadata/Census_ampThu Apr 16 15_35_36 2020.csv', 
+#     'del_genes':'classifycopynumber/metadata/Census_delsThu Apr 16 15_36_24 2020.csv',
+#     'additional_genes': 'classifycopynumber/metadata/additional_genes.csv',
+#     'antigen_presenting_genes':'classifycopynumber/metadata/antigen_presenting_genes.csv',
+#     'hr_genes':'classifycopynumber/metadata/hr_genes.txt'}
 
 setup(
     name='classifycopynumber',

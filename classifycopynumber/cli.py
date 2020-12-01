@@ -35,7 +35,7 @@ def main(genes_gtf, results_dir, remixt_h5_filename=None, hmmcopy_csv_filename=N
     genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest(genes)
 
     gene_cn = classifycopynumber.classify.calculate_gene_cn_data(cn, genes_of_interest, cn_cols)
-    print(gene_cn["copy"])
+    gene_cn.to_csv("/juno/work/shah/abramsd/CODE/classif_copynumber/classifycopynumber/tests/testdata/gene_cn.csv", index=False)
     amp_genes = classifycopynumber.classify.label_amplifications(gene_cn, ploidy)
     hdel_genes = classifycopynumber.classify.label_deletions(gene_cn, ploidy)
 
