@@ -7,12 +7,15 @@ import os
 @click.command()
 @click.argument('genes_gtf')
 @click.argument('results_dir')
+@click.argument('sample')
+@click.argument('amps')
+@click.argument('dels')
 
 @click.option('--remixt_h5_filename', help='Remixt H5')
 @click.option('--hmmcopy_csv_filename', help='hmmcopy csv')
 @click.option('--plot', help='bool to generate plots')
 
-def main(genes_gtf, results_dir, remixt_h5_filename=None, hmmcopy_csv_filename=None, plot=False):
+def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, hmmcopy_csv_filename=None, plot=False):
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
@@ -28,21 +31,21 @@ def main(genes_gtf, results_dir, remixt_h5_filename=None, hmmcopy_csv_filename=N
         ploidy = stats["ploidy"]
 
     elif hmmcopy_csv_filename is not None:
-        cn, ploidy = classifycopynumber.parsers.read_hmmcopy(hmmcopy_csv_filename)
+        cn, ploidy = classifycopynumber.parsers.read_hmmcopy(hmmcopy_csv_filename, sample)
         cn_cols=["state", "copy"]
 
     # cn = classifycopynumber.classify.aggregate_cn_data(cn)
     genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest(genes)
 
     gene_cn = classifycopynumber.classify.calculate_gene_cn_data(cn, genes_of_interest, cn_cols)
-    gene_cn.to_csv("/juno/work/shah/abramsd/CODE/classif_copynumber/classifycopynumber/tests/testdata/gene_cn.csv", index=False)
-    amp_genes = classifycopynumber.classify.label_amplifications(gene_cn, ploidy)
-    hdel_genes = classifycopynumber.classify.label_deletions(gene_cn, ploidy)
 
-    amp_genes.to_csv(os.path.join(results_dir, "amplified_genes.tsv"))
-    hdel_genes.to_csv(os.path.join(results_dir, "deleted_genes.tsv"))
+    amp_genes = classifycopynumber.classify.label_amplifications(gene_cn, ploidy, sample)
+    hdel_genes = classifycopynumber.classify.label_deletions(gene_cn, ploidy, sample)
 
-    if plot:
+    amp_genes.to_csv(amps)
+    hdel_genes.to_csv(dels)
+
+    if plot == "True":
         plots_dir = os.path.join(results_dir, "plots")
         if not os.path.exists(plots_dir):
             os.makedirs(plots_dir)

@@ -45,7 +45,6 @@ def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
 
         # cn['width'] = cn['gene_end'] - cn['gene_start']
         cn['total_raw'] = cn['major_raw'] + cn['minor_raw']
-        print(cn.total_raw)
         cn=cn.rename(columns={"total_raw":"copy"})
         # print(stats)
         # cn = cn.merge(stats[['sample', 'ploidy']])
@@ -55,14 +54,14 @@ def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
 
 
 
-def read_hmmcopy(filename, filter_normal=False, group_label_col='cell_id'):
+def read_hmmcopy(filename, sample, filter_normal=False, group_label_col='cell_id'):
     """ Read hmmcopy data, filter normal cells and aggregate into segments
     """
     data = pd.read_csv(
         filename,
         usecols=['chr', 'start', 'end', 'width', 'state', 'copy', 'reads', 'cell_id'],
         dtype={'chr': 'category', 'cell_id': 'category'})
-
+    print(data)
     # Filter normal cells that are approximately diploid
     if filter_normal:
         cell_stats = (
@@ -118,7 +117,10 @@ def read_hmmcopy(filename, filter_normal=False, group_label_col='cell_id'):
 
     data['chr'] = data['chr'].astype(str)
     data = data.rename(columns={"chr":"chromosome"})
-    ploidy = data["copy"]/data.width
+    ploidy = (data["copy"] * data["width"]).sum() / data["width"].sum()
+    out=data
+    out["ploidy"] = [ploidy] * len(data)
+    out.to_csv("/juno/work/shah/abramsd/RESULTS/dlp_cohort_oncoplot/DATA/copynumber_classification/signatures/{}_parsed_aggregated.tsv".format(sample))
     return data.reset_index(), ploidy.mean()
 
 

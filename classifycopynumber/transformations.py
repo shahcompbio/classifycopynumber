@@ -10,9 +10,11 @@ def calculate_log_change(data, ploidy):
 
     data = data.groupby(['gene_name'])['total_raw_weighted'].sum().reset_index()
     data = data.merge(normalize)
+
     data['total_raw_mean'] = data['total_raw_weighted'] / data['sum_overlap_width']
     data['log_change'] = np.log2(data['total_raw_mean']/ploidy)
-    return data[["gene_name", "total_raw_mean", "total_raw_weighted", "log_change"]]
+    data["ploidy"] = [ploidy] * len(data)
+    return data
 
 
 def aggregate_adjacent(cnv, value_cols=(), stable_cols=(), length_normalized_cols=(), summed_cols=()):
