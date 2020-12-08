@@ -15,6 +15,7 @@ import os
 @click.option('--hmmcopy_csv_filename', help='hmmcopy csv')
 @click.option('--plot', help='bool to generate plots')
 
+
 def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, hmmcopy_csv_filename=None, plot=False):
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
@@ -33,8 +34,7 @@ def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, hm
     elif hmmcopy_csv_filename is not None:
         cn, ploidy = classifycopynumber.parsers.read_hmmcopy(hmmcopy_csv_filename, sample)
         cn_cols=["state", "copy"]
-
-    # cn = classifycopynumber.classify.aggregate_cn_data(cn)
+    print(cn, cn.columns)
     genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest(genes)
 
     gene_cn = classifycopynumber.classify.calculate_gene_cn_data(cn, genes_of_interest, cn_cols)
@@ -56,13 +56,9 @@ def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, hm
         log_change_plot = os.path.join(plots_dir, "log_change_amplified_amplification_genes.png")
         classifycopynumber.plots.plot_log_change(amp_genes, log_change_plot)
 
-        # log_change_plot = os.path.join(plots_dir, "amp_matrix.png")
-        # classifycopynumber.plots.plot_amp_matrix(amp_genes, log_change_plot)
-
         log_change_plot = os.path.join(plots_dir, "log_change_hdel_genes.png")
         classifycopynumber.plots.plot_log_change(hdel_genes, log_change_plot)
 
         hdel_genes = hdel_genes[hdel_genes.pass_filter==True]
         log_change_plot = os.path.join(plots_dir, "log_change_hdel_deleted_genes.png")
         classifycopynumber.plots.plot_log_change(hdel_genes, log_change_plot)
-    # from IPython import embed; embed(); raise

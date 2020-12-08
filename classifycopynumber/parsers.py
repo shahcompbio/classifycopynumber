@@ -43,11 +43,8 @@ def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
         stats['readcount_mean_sq_err'] = readcount_mean_sq_err
         stats['raw_integer_mean_sq_err'] = raw_integer_mean_sq_err
 
-        # cn['width'] = cn['gene_end'] - cn['gene_start']
         cn['total_raw'] = cn['major_raw'] + cn['minor_raw']
         cn=cn.rename(columns={"total_raw":"copy"})
-        # print(stats)
-        # cn = cn.merge(stats[['sample', 'ploidy']])
 
         return cn, stats
     
@@ -61,7 +58,7 @@ def read_hmmcopy(filename, sample, filter_normal=False, group_label_col='cell_id
         filename,
         usecols=['chr', 'start', 'end', 'width', 'state', 'copy', 'reads', 'cell_id'],
         dtype={'chr': 'category', 'cell_id': 'category'})
-    print(data)
+
     # Filter normal cells that are approximately diploid
     if filter_normal:
         cell_stats = (
@@ -80,9 +77,7 @@ def read_hmmcopy(filename, sample, filter_normal=False, group_label_col='cell_id
         data = data[~data['is_normal']]
 
     # Aggregate cell copy number
-
     aggregated_data = {}
-    # for group, data in data.groupby(group_label_col):
 
     data = (
         data
@@ -90,22 +85,7 @@ def read_hmmcopy(filename, sample, filter_normal=False, group_label_col='cell_id
         .agg({'state': 'median', 'copy': np.nanmean, 'reads': 'sum'})
         .reset_index())
 
-    # assert all(not group.duplicated(['chr', 'start', 'end']).any() for l, group in data.groupby(group_label_col))
     assert not data.duplicated(['chr', 'start', 'end']).any()
-
-    #not per cell
-
-    # Aggregate cell copy number
-    # def apply_aggregate_adjacent(data):
-    #     return classifycopynumber.transformations.aggregate_adjacent(
-    #         data,
-    #         value_cols=['state'],
-    #         stable_cols=['state'],
-    #         length_normalized_cols=['copy'],
-    #         summed_cols=['reads'],
-    #     )
-    # data = data.groupby(group_label_col).apply(lambda group: apply_aggregate_adjacent(group))
-
 
     data = classifycopynumber.transformations.aggregate_adjacent(
             data,
@@ -118,9 +98,7 @@ def read_hmmcopy(filename, sample, filter_normal=False, group_label_col='cell_id
     data['chr'] = data['chr'].astype(str)
     data = data.rename(columns={"chr":"chromosome"})
     ploidy = (data["copy"] * data["width"]).sum() / data["width"].sum()
-    out=data
-    out["ploidy"] = [ploidy] * len(data)
-    out.to_csv("/juno/work/shah/abramsd/RESULTS/dlp_cohort_oncoplot/DATA/copynumber_classification/signatures/{}_parsed_aggregated.tsv".format(sample))
+
     return data.reset_index(), ploidy.mean()
 
 
