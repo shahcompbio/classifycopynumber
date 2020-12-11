@@ -3,6 +3,17 @@ import numpy as np
 import os
 import classifycopynumber.transformations
 import pkg_resources
+import yaml
+
+def read_remixt_parsed_csv(filename):
+    metadata = os.path.join(os.path.dirname(filename), "meta.yaml")
+    cn = pd.read_csv(filename, sep="\t")
+    cn['total_raw'] = cn['major_raw'] + cn['minor_raw']
+    cn=cn.rename(columns={"total_raw":"copy"})
+    with open(metadata, 'r') as f:
+        yam = yaml.load(f, Loader=yaml.FullLoader)
+    ploidy = yam["ploidy"]
+    return cn, {"ploidy":ploidy}
 
 def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
     with pd.HDFStore(filename) as store:

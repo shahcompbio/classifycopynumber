@@ -3,6 +3,8 @@ import classifycopynumber.classify
 import classifycopynumber.parsers
 import classifycopynumber.plots
 import os
+import pandas as pd
+import yaml
 
 @click.command()
 @click.argument('genes_gtf')
@@ -12,18 +14,26 @@ import os
 @click.argument('dels')
 
 @click.option('--remixt_h5_filename', help='Remixt H5')
+@click.option('--remixt_parsed_csv', help='Remixt H5')
 @click.option('--hmmcopy_csv_filename', help='hmmcopy csv')
 @click.option('--plot', help='bool to generate plots')
 
 
-def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, hmmcopy_csv_filename=None, plot=False):
+def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, remixt_parsed_csv=None, hmmcopy_csv_filename=None, plot=False):
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     genes = classifycopynumber.parsers.read_gene_data(genes_gtf)
-
-    if remixt_h5_filename is None and hmmcopy_csv_filename is None:
+    
+    if remixt_h5_filename is None and hmmcopy_csv_filename is None and remixt_parsed_csv is None:
         raise click.ClickException('One of remixt_h5_filename, hmmcopy_csv_filename required')
+
+    if remixt_parsed_csv is not None:
+        cn, stats = classifycopynumber.parsers.read_remixt_parsed_csv(remixt_parsed_csv)
+        ploidy = stats["ploidy"]
+        print(ploidy)
+        cn_cols = ['major_raw','minor_raw', 'copy','major_1',
+        'minor_1','major_2','minor_2']
 
     if remixt_h5_filename is not None:
         cn, stats = classifycopynumber.parsers.read_remixt(remixt_h5_filename)
@@ -34,7 +44,7 @@ def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, hm
     elif hmmcopy_csv_filename is not None:
         cn, ploidy = classifycopynumber.parsers.read_hmmcopy(hmmcopy_csv_filename, sample)
         cn_cols=["state", "copy"]
-    print(cn, cn.columns)
+
     genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest(genes)
 
     gene_cn = classifycopynumber.classify.calculate_gene_cn_data(cn, genes_of_interest, cn_cols)

@@ -26,12 +26,9 @@ def calculate_log_change(data, ploidy):
     normalize = (
         data.groupby('gene_name')['overlap_width']
         .sum().rename('sum_overlap_width').reset_index())
-
     data['total_raw_weighted'] = data['copy'] * data['overlap_width']
-
     data = data.groupby(['gene_name'])['total_raw_weighted'].sum().reset_index()
     data = data.merge(normalize)
-
     data['total_raw_mean'] = data['total_raw_weighted'] / data['sum_overlap_width']
     data['log_change'] = np.log2(data['total_raw_mean']/ploidy)
     data["ploidy"] = [ploidy] * len(data)
