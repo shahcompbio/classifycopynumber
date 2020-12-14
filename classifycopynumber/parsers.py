@@ -4,6 +4,7 @@ import os
 import classifycopynumber.transformations
 import pkg_resources
 import yaml
+from scgenome.utils import concat_with_categories
 
 def read_remixt_parsed_csv(filename):
     metadata = os.path.join(os.path.dirname(filename), "meta.yaml")
@@ -14,6 +15,7 @@ def read_remixt_parsed_csv(filename):
         yam = yaml.load(f, Loader=yaml.FullLoader)
     ploidy = yam["ploidy"]
     return cn, {"ploidy":ploidy}
+
 
 def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
     with pd.HDFStore(filename) as store:
@@ -58,17 +60,21 @@ def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
         cn=cn.rename(columns={"total_raw":"copy"})
 
         return cn, stats
-    
 
 
-
-def read_hmmcopy(filename, sample, filter_normal=False, group_label_col='cell_id'):
+def read_hmmcopy_files(filenames, filter_normal=False, group_label_col='cell_id'):
     """ Read hmmcopy data, filter normal cells and aggregate into segments
     """
-    data = pd.read_csv(
-        filename,
-        usecols=['chr', 'start', 'end', 'width', 'state', 'copy', 'reads', 'cell_id'],
-        dtype={'chr': 'category', 'cell_id': 'category'})
+    dfs=[]
+    for filename in filenames:
+        data = pd.read_csv(
+            filename,
+            usecols=['chr', 'start', 'end', 'width', 'state', 'copy', 'reads', 'cell_id'],
+            dtype={'chr': 'category', 'cell_id': 'category'})
+        dfs.append(data)
+    
+    if len(dfs) > 1:
+        data = concat_with_categories(dfs)
 
     # Filter normal cells that are approximately diploid
     if filter_normal:

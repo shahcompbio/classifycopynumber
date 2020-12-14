@@ -15,23 +15,22 @@ import yaml
 
 @click.option('--remixt_h5_filename', help='Remixt H5')
 @click.option('--remixt_parsed_csv', help='Remixt H5')
-@click.option('--hmmcopy_csv_filename', help='hmmcopy csv')
+@click.option('--hmmcopy_csv_filenames', help='hmmcopy csv',  multiple=True, default=None)
 @click.option('--plot', help='bool to generate plots')
 
 
-def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, remixt_parsed_csv=None, hmmcopy_csv_filename=None, plot=False):
+def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, remixt_parsed_csv=None, hmmcopy_csv_filenames=None, plot=False):
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     genes = classifycopynumber.parsers.read_gene_data(genes_gtf)
-    
-    if remixt_h5_filename is None and hmmcopy_csv_filename is None and remixt_parsed_csv is None:
+
+    if remixt_h5_filename is None and hmmcopy_csv_filenames is None and remixt_parsed_csv is None:
         raise click.ClickException('One of remixt_h5_filename, hmmcopy_csv_filename required')
 
     if remixt_parsed_csv is not None:
         cn, stats = classifycopynumber.parsers.read_remixt_parsed_csv(remixt_parsed_csv)
         ploidy = stats["ploidy"]
-        print(ploidy)
         cn_cols = ['major_raw','minor_raw', 'copy','major_1',
         'minor_1','major_2','minor_2']
 
@@ -41,8 +40,8 @@ def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, re
         'minor_1','major_2','minor_2']
         ploidy = stats["ploidy"]
 
-    elif hmmcopy_csv_filename is not None:
-        cn, ploidy = classifycopynumber.parsers.read_hmmcopy(hmmcopy_csv_filename, sample)
+    elif hmmcopy_csv_filenames != ():
+        cn, ploidy = classifycopynumber.parsers.read_hmmcopy_files(hmmcopy_csv_filenames)
         cn_cols=["state", "copy"]
 
     genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest(genes)
@@ -52,8 +51,8 @@ def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, re
     amp_genes = classifycopynumber.classify.label_amplifications(gene_cn, ploidy, sample)
     hdel_genes = classifycopynumber.classify.label_deletions(gene_cn, ploidy, sample)
 
-    amp_genes.to_csv(amps)
-    hdel_genes.to_csv(dels)
+    amp_genes.to_csv(amps, index=False)
+    hdel_genes.to_csv(dels, index=False)
 
     if plot == "True":
         plots_dir = os.path.join(results_dir, "plots")
