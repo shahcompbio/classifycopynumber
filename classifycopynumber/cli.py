@@ -24,7 +24,6 @@ def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, re
         os.makedirs(results_dir)
 
     genes = classifycopynumber.parsers.read_gene_data(genes_gtf)
-
     if remixt_h5_filename is None and hmmcopy_csv_filenames is None and remixt_parsed_csv is None:
         raise click.ClickException('One of remixt_h5_filename, hmmcopy_csv_filename required')
 

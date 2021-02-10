@@ -131,7 +131,12 @@ def read_gene_data(gtf):
     def extract_info(info):
         info_dict = {}
         for a in info.split('; '):
-            k, v = a.split(' ')
+            split = a.split(' ')
+            if split[0] == '': ### THIS gets scp's gtf "/juno/work/shah/reference/singlecellpipeline/human/GRCh37-lite.gtf" to work
+                k,v = split[1:]
+            else: 
+                k,v = split
+            # k, v = a.split(' ')
             info_dict[k] = v.strip(';').strip('"')
         return info_dict
     
@@ -187,6 +192,7 @@ def compile_genes_of_interest(gene_regions, amp_genes='default',
     if additional_genes:
         cgc_genes = pd.concat([cgc_genes, pd.read_csv(additional_genes)])
     if hr_genes:
+
         cgc_genes = pd.concat([cgc_genes, pd.read_csv(hr_genes)])
     if antigen_genes:
         cgc_genes = pd.concat([cgc_genes, pd.read_csv(antigen_genes)])
@@ -200,9 +206,7 @@ def compile_genes_of_interest(gene_regions, amp_genes='default',
     }
     cgc_genes['gene_name'] = cgc_genes['gene_name'].apply(lambda a: gene_rename.get(a, a))
 
-
     cgc_genes = cgc_genes.merge(gene_regions, how='left')
 
     assert not cgc_genes['gene_start'].isnull().any()
-
     return cgc_genes

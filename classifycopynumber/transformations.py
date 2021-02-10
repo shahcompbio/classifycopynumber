@@ -12,6 +12,7 @@ def generate_segmental_cn(filename, aggregated_cn_data, ploidy,  cn_col="copy", 
     aggregated_cn_data = aggregated_cn_data[['ID', 'chrom', 'loc.start', 'loc.end', 'num.mark', 'seg.mean']]
     aggregated_cn_data['seg.mean'] = aggregated_cn_data['seg.mean'].fillna(np.exp(-8))
     aggregated_cn_data.loc[aggregated_cn_data['seg.mean'] == np.NINF, 'seg.mean'] = np.exp(-8)
+    aggregated_cn_data = _correct_seg_bin_ends(aggregated_cn_data)
     aggregated_cn_data.to_csv(filename, index=None, sep='\t')
 
 
@@ -73,3 +74,30 @@ def aggregate_adjacent(cnv, value_cols=(), stable_cols=(), length_normalized_col
     return aggregated
 
 
+
+def _correct_seg_bin_ends(data):
+    data.loc[(data['chrom'] == '1') & (data['loc.end'] == 249500000), 'loc.end'] = 249250621
+    data.loc[(data['chrom'] == '2') & (data['loc.end'] == 243500000), 'loc.end'] = 243199373
+    data.loc[(data['chrom'] == '3') & (data['loc.end'] == 198500000), 'loc.end'] = 198022430
+    data.loc[(data['chrom'] == '4') & (data['loc.end'] == 191500000), 'loc.end'] = 191154276
+    data.loc[(data['chrom'] == '5') & (data['loc.end'] == 181000000), 'loc.end'] = 180915260
+    data.loc[(data['chrom'] == '6') & (data['loc.end'] == 171500000), 'loc.end'] = 171115067
+    data.loc[(data['chrom'] == '7') & (data['loc.end'] == 159500000), 'loc.end'] = 159138663
+    data.loc[(data['chrom'] == '8') & (data['loc.end'] == 146500000), 'loc.end'] = 146364022
+    data.loc[(data['chrom'] == '9') & (data['loc.end'] == 141500000), 'loc.end'] = 141213431
+    data.loc[(data['chrom'] == '10') & (data['loc.end'] == 136000000), 'loc.end'] = 135534747
+    data.loc[(data['chrom'] == '11') & (data['loc.end'] == 135500000), 'loc.end'] = 135006516
+    data.loc[(data['chrom'] == '12') & (data['loc.end'] == 134000000), 'loc.end'] = 133851895
+    data.loc[(data['chrom'] == '13') & (data['loc.end'] == 115500000), 'loc.end'] = 115169878
+    data.loc[(data['chrom'] == '14') & (data['loc.end'] == 107500000), 'loc.end'] = 107349540
+    data.loc[(data['chrom'] == '15') & (data['loc.end'] == 103000000), 'loc.end'] = 102531392
+    data.loc[(data['chrom'] == '16') & (data['loc.end'] == 90500000), 'loc.end'] = 90354753
+    data.loc[(data['chrom'] == '17') & (data['loc.end'] == 81500000), 'loc.end'] = 81195210
+    data.loc[(data['chrom'] == '18') & (data['loc.end'] == 78500000), 'loc.end'] = 78077248
+    data.loc[(data['chrom'] == '19') & (data['loc.end'] == 59500000), 'loc.end'] = 59128983
+    data.loc[(data['chrom'] == '20') & (data['loc.end'] == 63500000), 'loc.end'] = 63025520
+    data.loc[(data['chrom'] == '21') & (data['loc.end'] == 48500000), 'loc.end'] = 48129895
+    data.loc[(data['chrom'] == '22') & (data['loc.end'] == 51500000), 'loc.end'] = 51304566
+    data.loc[(data['chrom'] == 'X') & (data['loc.end'] == 155500000), 'loc.end'] = 155270560
+    data.loc[(data['chrom'] == 'Y') & (data['loc.end'] == 59500000), 'loc.end'] = 59373566
+    return data
