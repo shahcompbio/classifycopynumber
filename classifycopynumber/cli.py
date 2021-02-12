@@ -24,6 +24,8 @@ def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, re
         os.makedirs(results_dir)
 
     genes = classifycopynumber.parsers.read_gene_data(genes_gtf)
+    genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest(genes)
+
     if remixt_h5_filename is None and hmmcopy_csv_filenames is None and remixt_parsed_csv is None:
         raise click.ClickException('One of remixt_h5_filename, hmmcopy_csv_filename required')
 
@@ -42,8 +44,6 @@ def main(genes_gtf, results_dir, sample, amps, dels, remixt_h5_filename=None, re
     elif hmmcopy_csv_filenames != ():
         cn, ploidy = classifycopynumber.parsers.read_hmmcopy_files(hmmcopy_csv_filenames)
         cn_cols=["state", "copy"]
-
-    genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest(genes)
 
     gene_cn = classifycopynumber.classify.calculate_gene_cn_data(cn, genes_of_interest, cn_cols)
 
