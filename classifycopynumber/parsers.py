@@ -6,6 +6,10 @@ import pkg_resources
 import yaml
 from scgenome.utils import concat_with_categories
 
+
+autosomes = [str(a) for a in range(1, 23)]
+
+
 def read_remixt_parsed_csv(filename):
     metadata = os.path.join(os.path.dirname(filename), "meta.yaml")
     cn = pd.read_csv(filename, sep="\t")
@@ -72,9 +76,15 @@ def read_hmmcopy_files(filenames, filter_normal=False, group_label_col='cell_id'
             usecols=['chr', 'start', 'end', 'width', 'state', 'copy', 'reads', 'cell_id'],
             dtype={'chr': 'category', 'cell_id': 'category'})
         dfs.append(data)
-    
+
     if len(dfs) > 1:
         data = concat_with_categories(dfs)
+
+    # HACK: remove the last segment of each chromosome
+    chrom_ends = data.groupby('chr')['end'].max().rename('chrom_end').reset_index()
+    data = data.merge(chrom_ends)
+    data = data.query('end != chrom_end')
+    data = data.drop(['chrom_end'], axis=1)
 
     # Filter normal cells that are approximately diploid
     if filter_normal:
@@ -98,8 +108,8 @@ def read_hmmcopy_files(filenames, filter_normal=False, group_label_col='cell_id'
 
     data = (
         data
-        .groupby([ 'chr', 'start', 'end', 'width'])
-        .agg({'state': 'median', 'copy': np.nanmean, 'reads': 'sum'})
+        .groupby([ 'chr', 'start', 'end', 'width'], observed=True)
+        .agg({'state': np.nanmedian, 'copy': np.nanmean, 'reads': np.nansum})
         .reset_index())
 
     assert not data.duplicated(['chr', 'start', 'end']).any()
@@ -203,10 +213,16 @@ def compile_genes_of_interest(gene_regions, amp_genes='default',
         'NSD3': 'WHSC1L1',
         'MRE11': 'MRE11A',
         'SEM1': 'SHFM1',
+        'MYCL': 'MYCL1',
+        'AMER1': 'FAM123B',
     }
     cgc_genes['gene_name'] = cgc_genes['gene_name'].apply(lambda a: gene_rename.get(a, a))
 
     cgc_genes = cgc_genes.merge(gene_regions, how='left')
 
+    if cgc_genes['gene_start'].isnull().any():
+        raise Exception(cgc_genes[cgc_genes['gene_start'].isnull()])
+
     assert not cgc_genes['gene_start'].isnull().any()
     return cgc_genes
+
