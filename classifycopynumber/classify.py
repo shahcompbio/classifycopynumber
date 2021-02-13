@@ -3,7 +3,7 @@ import numpy as np
 from classifycopynumber.transformations import calculate_log_change
 
 
-def label_amplifications(data, ploidy, sample):
+def label_amplifications(data, ploidy):
 
     data=data[data.cn_type=="amplification"]
     data = data.merge(calculate_log_change(data, ploidy), on="gene_name")
@@ -11,7 +11,7 @@ def label_amplifications(data, ploidy, sample):
     return data
 
 
-def label_deletions(data, ploidy, sample):
+def label_deletions(data, ploidy):
 
     data=data[data.cn_type=="deletion"]
     data["pass_filter"] = data["copy"] < 0.5
