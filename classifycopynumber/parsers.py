@@ -66,7 +66,7 @@ def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
         return cn, stats
 
 
-def read_hmmcopy_files(filenames, filter_normal=False, group_label_col='cell_id'):
+def read_hmmcopy_files(filenames, filter_normal=False, group_label_col='cell_id', sample_ids=None):
     """ Read hmmcopy data, filter normal cells and aggregate into segments
     """
     dfs=[]
@@ -79,6 +79,13 @@ def read_hmmcopy_files(filenames, filter_normal=False, group_label_col='cell_id'
 
     if len(dfs) > 1:
         data = concat_with_categories(dfs)
+
+    data['sample_id'] = data['cell_id'].str.split('-', expand=True)[0]
+
+    if sample_ids is not None:
+        data = data[data['sample_id'].isin(sample_ids)]
+        if data.empty:
+            raise ValueError('no data after filtering samples')
 
     # HACK: remove the last segment of each chromosome
     chrom_ends = data.groupby('chr')['end'].max().rename('chrom_end').reset_index()
