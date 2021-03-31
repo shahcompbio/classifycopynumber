@@ -3,12 +3,17 @@ Copy number classifier
 """
 from setuptools import find_packages, setup
 
-dependencies = [
+install_requires = [
     'click',
     'pandas',
     'PyYAML',
     'seaborn',
     'tables',
+    'scgenome@git+https://github.com/shahcompbio/scgenome.git#egg=scgenome',
+    'wgs_analysis@git+https://github.com/amcpherson/wgs_analysis.git#egg=wgs_analysis',
+]
+
+dependency_links = [
     'https://github.com/shahcompbio/scgenome.git#egg=scgenome',
     'https://github.com/amcpherson/wgs_analysis.git#egg=wgs_analysis',
 ]
@@ -25,7 +30,8 @@ setup(
     include_package_data=True,
     zip_safe=False,
     platforms='any',
-    install_requires=dependencies,
+    install_requires=install_requires,
+    dependency_links=dependency_links,
     entry_points={
         'console_scripts': [
             'classifycopynumber = classifycopynumber.cli:main',
