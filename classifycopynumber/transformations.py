@@ -3,32 +3,6 @@ import pandas as pd
 import wgs_analysis.algorithms.cnv
 
 
-def generate_segmental_cn(filename, aggregated_cn_data, ploidy,  cn_col="copy", length_col="length"):
-
-    aggregated_cn_data['ploidy'] = ploidy 
-    aggregated_cn_data['seg.mean'] = np.log2(aggregated_cn_data[cn_col] / aggregated_cn_data['ploidy'])
-    aggregated_cn_data['num.mark'] = (aggregated_cn_data[length_col] / 500000).astype(int)
-    aggregated_cn_data = aggregated_cn_data.rename(columns={'sample': 'ID', 'chromosome': 'chrom', 'start': 'loc.start', 'end': 'loc.end'})
-    aggregated_cn_data = aggregated_cn_data[['ID', 'chrom', 'loc.start', 'loc.end', 'num.mark', 'seg.mean']]
-    aggregated_cn_data['seg.mean'] = aggregated_cn_data['seg.mean'].fillna(np.exp(-8))
-    aggregated_cn_data.loc[aggregated_cn_data['seg.mean'] == np.NINF, 'seg.mean'] = np.exp(-8)
-    aggregated_cn_data = _correct_seg_bin_ends(aggregated_cn_data)
-    aggregated_cn_data.to_csv(filename, index=None, sep='\t')
-
-
-def calculate_log_change(data, ploidy):
-    normalize = (
-        data.groupby('gene_name')['overlap_width']
-        .sum().rename('sum_overlap_width').reset_index())
-    data['total_raw_weighted'] = data['copy'] * data['overlap_width']
-    data = data.groupby(['gene_name'])['total_raw_weighted'].sum().reset_index()
-    data = data.merge(normalize)
-    data['total_raw_mean'] = data['total_raw_weighted'] / data['sum_overlap_width']
-    data['log_change'] = np.log2(data['total_raw_mean']/ploidy)
-    data["ploidy"] = [ploidy] * len(data)
-    return data
-
-
 def aggregate_adjacent(cnv, value_cols=(), stable_cols=(), length_normalized_cols=(), summed_cols=()):
     """ Aggregate adjacent segments with similar copy number state.
 
@@ -65,14 +39,15 @@ def aggregate_adjacent(cnv, value_cols=(), stable_cols=(), length_normalized_col
 
         for col in summed_cols:
             a[col] = df[col].sum()
+
         return pd.Series(a)
 
     aggregated = cnv.groupby('cn_group').apply(agg_segments)
+
     for col in aggregated:
         aggregated[col] = aggregated[col].astype(cnv[col].dtype)
 
     return aggregated
-
 
 
 def _correct_seg_bin_ends(data):

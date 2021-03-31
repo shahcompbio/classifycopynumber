@@ -11,20 +11,20 @@ autosomes = [str(a) for a in range(1, 23)]
 
 
 def read_remixt_parsed_csv(filename):
-    metadata = os.path.join(os.path.dirname(filename), "meta.yaml")
-    cn = pd.read_csv(filename, sep="\t")
+    cn = pd.read_csv(filename, sep='\t')
     cn['total_raw'] = cn['major_raw'] + cn['minor_raw']
-    cn=cn.rename(columns={"total_raw":"copy"})
-    with open(metadata, 'r') as f:
-        yam = yaml.load(f, Loader=yaml.FullLoader)
-    ploidy = yam["ploidy"]
-    return cn, {"ploidy":ploidy}
+
+    metadata_filename = os.path.join(os.path.dirname(filename), 'meta.yaml')
+    with open(metadata_filename, 'r') as f:
+        metadata = yaml.load(f, Loader=yaml.FullLoader)
+    ploidy = metadata['ploidy']
+
+    return cn, {'ploidy':ploidy}
 
 
 def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
     with pd.HDFStore(filename) as store:
         stats = store['stats']
-        brk_cn = store["brk_cn"]
 
         stats = stats[stats['proportion_divergent'] < max_divergence]
 
@@ -61,7 +61,6 @@ def read_remixt(filename, max_ploidy=None, min_ploidy=None, max_divergence=0.5):
         stats['raw_integer_mean_sq_err'] = raw_integer_mean_sq_err
 
         cn['total_raw'] = cn['major_raw'] + cn['minor_raw']
-        cn=cn.rename(columns={"total_raw":"copy"})
 
         return cn, stats
 
@@ -115,23 +114,26 @@ def read_hmmcopy_files(filenames, filter_normal=False, group_label_col='cell_id'
 
     data = (
         data
-        .groupby([ 'chr', 'start', 'end', 'width'], observed=True)
+        .groupby(['chr', 'start', 'end', 'width'], observed=True)
         .agg({'state': np.nanmedian, 'copy': np.nanmean, 'reads': np.nansum})
         .reset_index())
 
     assert not data.duplicated(['chr', 'start', 'end']).any()
 
     data = classifycopynumber.transformations.aggregate_adjacent(
-            data,
-            value_cols=['state'],
-            stable_cols=['state'],
-            length_normalized_cols=['copy'],
-            summed_cols=['reads'],
+        data,
+        value_cols=['state'],
+        stable_cols=['state'],
+        length_normalized_cols=['copy'],
+        summed_cols=['reads'],
     )
 
+    ploidy = (data['copy'] * data['width']).sum() / data['width'].sum()
+
     data['chr'] = data['chr'].astype(str)
-    data = data.rename(columns={"chr":"chromosome"})
-    ploidy = (data["copy"] * data["width"]).sum() / data["width"].sum()
+    data = data.rename(columns={'chr': 'chromosome'})
+
+    data['total_raw'] = data['copy']
 
     return data.reset_index(), ploidy.mean()
 
@@ -147,16 +149,11 @@ def read_gene_data(gtf):
 
     def extract_info(info):
         info_dict = {}
-        for a in info.split('; '):
-            split = a.split(' ')
-            if split[0] == '': ### THIS gets scp's gtf "/juno/work/shah/reference/singlecellpipeline/human/GRCh37-lite.gtf" to work
-                k,v = split[1:]
-            else: 
-                k,v = split
-            # k, v = a.split(' ')
+        for a in info.strip(' ').split('; '):
+            k, v = a.split(' ')
             info_dict[k] = v.strip(';').strip('"')
         return info_dict
-    
+
     data['info'] = data['info'].apply(extract_info)
     data['gene_id'] = data['info'].apply(lambda a: a['gene_id'])
     data['gene_name'] = data['info'].apply(lambda a: a['gene_name'])
@@ -166,13 +163,14 @@ def read_gene_data(gtf):
     return data
 
 def _get_default_genes():
+    meta = os.path.join(os.path.dirname(__file__), 'metadata')
 
-    meta = os.path.join(os.path.dirname(__file__), "metadata")
-    return {"amp":pkg_resources.resource_stream(__name__, 'metadata/census_amps.csv'),  
-    "del": pkg_resources.resource_stream(__name__, 'metadata/census_dels.csv'),
-    "additional_genes": pkg_resources.resource_stream(__name__, 'metadata/additional_genes.csv'),
-    "antigen_genes": pkg_resources.resource_stream(__name__, 'metadata/antigen_presenting_genes.csv'),
-    "hr_genes": pkg_resources.resource_stream(__name__, 'metadata/hr_genes.txt'),
+    return {
+        'amp': pkg_resources.resource_stream(__name__, 'metadata/census_amps.csv'),  
+        'del': pkg_resources.resource_stream(__name__, 'metadata/census_dels.csv'),
+        'additional_genes': pkg_resources.resource_stream(__name__, 'metadata/additional_genes.csv'),
+        'antigen_genes': pkg_resources.resource_stream(__name__, 'metadata/antigen_presenting_genes.csv'),
+        'hr_genes': pkg_resources.resource_stream(__name__, 'metadata/hr_genes.txt'),
     }
 
 
@@ -220,8 +218,6 @@ def compile_genes_of_interest(gene_regions, amp_genes='default',
         'NSD3': 'WHSC1L1',
         'MRE11': 'MRE11A',
         'SEM1': 'SHFM1',
-        'MYCL': 'MYCL1',
-        'AMER1': 'FAM123B',
     }
     cgc_genes['gene_name'] = cgc_genes['gene_name'].apply(lambda a: gene_rename.get(a, a))
 
