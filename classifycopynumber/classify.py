@@ -2,56 +2,162 @@ import wgs_analysis.algorithms.cnv
 import numpy as np
 
 
-gene_cols = [
-    'gene_name',
-    'chromosome',
-    'gene_id',
-    'gene_start',
-    'gene_end',
-]
+def calculate_amp_percentile(cn, gene_cn):
+    """ Calculate the percentile of each gene wrt the cumulative distribution
+    of total copy number across the genome.
+
+    Args:
+        cn (pandas.DataFrame): segment copy number
+        gene_cn (pandas.DataFrame): gene copy number
+
+    Returns:
+        pandas.DataFrame: per gene amp percentile
+    """
+
+    # Calculate cumulative distribution of total copy number
+    cn = cn.copy()
+    cn['segment_length'] = cn['end'] - cn['start']
+    cn = cn[['total_raw', 'segment_length']].dropna().sort_values('total_raw')
+    cn['fraction_genome'] = cn['segment_length'] / cn['segment_length'].sum()
+    cn['cum_fraction_genome'] = 1 - cn['fraction_genome'].cumsum()
+
+    # Search cumulative distribution for percentile of each genes total copy number
+    gene_cn = gene_cn[['gene_name', 'total_raw_mean']].dropna().drop_duplicates()
+    gene_cn['amp_percentile'] = cn['cum_fraction_genome'].values[cn['total_raw'].searchsorted(gene_cn['total_raw_mean'])]
+
+    return gene_cn[['gene_name', 'amp_percentile']]
 
 
-def label_amplifications(data, ploidy, min_log_change=1):
-    data = data[data['cn_type'] == 'amplification']
+def calculate_mean_cn(gene_cn, cn_cols):
+    """ Calculate log2 change over ploidy in mean raw copy number
 
-    amp_data = data.copy()
+    Args:
+        gene_cn (pandas.DataFrame): gene copy number
+        cn_cols (list): list of cn columns to calculate mean for
+
+    Returns:
+        pandas.DataFrame: per gene log change over ploidy
+    """
+
+    gene_cn = gene_cn.copy()
     normalize = (
-        amp_data.groupby('gene_name')['overlap_width']
+        gene_cn.groupby('gene_name')['overlap_width']
         .sum().rename('sum_overlap_width').reset_index())
-    amp_data['total_raw_weighted'] = amp_data['total_raw'] * amp_data['overlap_width']
-    amp_data = amp_data.groupby(['gene_name'])['total_raw_weighted'].sum().reset_index()
-    amp_data = amp_data.merge(normalize)
-    amp_data['total_raw_mean'] = amp_data['total_raw_weighted'] / amp_data['sum_overlap_width']
-    amp_data['log_change'] = np.log2(amp_data['total_raw_mean'] / ploidy)
-    amp_data['pass_filter'] =  amp_data['log_change'] > min_log_change
 
-    cols = [
-        'total_raw_mean',
-        'log_change',
-        'pass_filter',
-    ]
+    weighted_cols = []
+    for col in cn_cols:
+        gene_cn[f'{col}_weighted'] = gene_cn[col] * gene_cn['overlap_width']
+        weighted_cols.append(f'{col}_weighted')
 
-    amp_data = amp_data.merge(data[gene_cols].drop_duplicates())[gene_cols + cols]
+    gene_cn = gene_cn.groupby(['gene_name'])[weighted_cols].sum().reset_index()
+    gene_cn = gene_cn.merge(normalize)
 
-    return amp_data
+    mean_cols = []
+    for col in cn_cols:
+        gene_cn[f'{col}_mean'] = gene_cn[f'{col}_weighted'] / gene_cn['sum_overlap_width']
+        mean_cols.append(f'{col}_mean')
+
+    gene_cn = gene_cn[['gene_name', 'sum_overlap_width'] + mean_cols]
+
+    return gene_cn
 
 
-def label_deletions(data, ploidy, min_overlap=10000):
-    data = data[data['cn_type'] == 'deletion']
+def calculate_hdel_width(gene_cn, hdel_cn_threshold=0.5):
+    """ Calculate total length of overlapping hdel segments
 
-    hdel_data = data[data['total_raw'] < 0.5]
+    Args:
+        gene_cn (pandas.DataFrame): gene copy number
+
+    KwArgs:
+        hdel_threshold (float): threshold on total copy number for homozygous deletion
+
+    Returns:
+        pandas.DataFrame: per gene log change over ploidy
+    """
+
+    hdel_data = gene_cn[gene_cn['total_raw'] < hdel_cn_threshold].copy()
     hdel_data = hdel_data.groupby(['gene_name'])['overlap_width'].sum().rename('hdel_width').reset_index()
-    hdel_data = hdel_data.merge(data[gene_cols].drop_duplicates(), how='right')
     hdel_data['hdel_width'] = hdel_data['hdel_width'].fillna(0).astype(int)
 
-    hdel_data['pass_filter'] =  hdel_data['hdel_width'] > min_overlap
-
-    cols = [
-        'hdel_width',
-        'pass_filter',
-    ]
-
-    hdel_data = hdel_data[gene_cols + cols]
-
     return hdel_data
+
+
+def classify_cn_change(
+        cn, ploidy, genes,
+        hlamp_percentile_threshold=0.02,
+        amp_log_change_threshold=1,
+        hdel_overlap_threshold=10000,
+        loh_mean_cn_threshold=0.5,
+        del_log_change_threshold=-1,
+        hdel_cn_threshold=0.5,
+    ):
+    """ Classify CN changes and calculate gistic values
+
+    Args:
+        cn (pandas.DataFrame): table of copy number values
+        ploidy (float): mean copy number across the genome
+        genes (pandas.DataFrame): gene regions of interest
+
+    KwArgs: filtering thresholds
+
+    """
+
+    # Calculate gene copy number overlaps
+    cn_cols = ['total_raw', 'minor_raw']
+    if 'minor_raw' not in cn:
+        cn_cols = ['total_raw']
+    gene_cn = wgs_analysis.algorithms.cnv.calculate_gene_copy(cn, genes, cn_cols)
+
+    # Calculate mean copy number across each gene
+    mean_cn = calculate_mean_cn(gene_cn, cn_cols)
+    mean_cn['log_change'] = np.log2(mean_cn['total_raw_mean'] / ploidy)
+
+    # Call LOH from minor CN if possible
+    if 'minor_raw_mean' in mean_cn:
+        mean_cn['is_loh'] = mean_cn['minor_raw_mean'] < loh_mean_cn_threshold
+
+    # Call HL amps as amplified type and percentile threshold
+    amp_percentile = calculate_amp_percentile(cn, mean_cn)
+    amp_percentile = amp_percentile.merge(genes[['gene_name', 'amplification_type']], how='right')
+    amp_percentile['is_hlamp'] = (
+        amp_percentile['amplification_type'] &
+        (amp_percentile['amp_percentile'] < hlamp_percentile_threshold))
+    amp_percentile = amp_percentile.drop(['amplification_type'], axis=1)
+
+    # Call HDels as deletion type and hdel overlap threshold
+    hdel_width = calculate_hdel_width(gene_cn, hdel_cn_threshold=hdel_cn_threshold)
+    hdel_width = hdel_width.merge(genes[['gene_name', 'deletion_type']], how='right')
+    hdel_width['hdel_width'] = hdel_width['hdel_width'].fillna(0)
+    hdel_width['is_hdel'] = (
+        hdel_width['deletion_type'] &
+        (hdel_width['hdel_width'] > hdel_overlap_threshold))
+    hdel_width = hdel_width.drop(['deletion_type'], axis=1)
+
+    # Compile list of CN change
+    cn_change = (
+        genes.merge(mean_cn, on='gene_name', how='left')
+        .merge(amp_percentile, on='gene_name', how='left')
+        .merge(hdel_width, on='gene_name', how='left'))
+
+    # Default state
+    cn_change['gistic_value'] = 0
+
+    # Amplified as log change greater than 1
+    cn_change.loc[cn_change['log_change'] > amp_log_change_threshold, 'gistic_value'] = 1
+
+    # Deleted state as LOH if possible otherwise log change threshold
+    if 'is_loh' in cn_change:
+        cn_change.loc[cn_change['is_loh'], 'gistic_value'] = -1
+        cn_change['has_loh'] = True
+    else:
+        cn_change.loc[cn_change['log_change'] < del_log_change_threshold, 'gistic_value'] = -1
+        cn_change['has_loh'] = False
+
+    # High level amplified state from amp call
+    cn_change.loc[cn_change['is_hlamp'], 'gistic_value'] = 2
+
+    # Homozygous deleted state from amp call
+    cn_change.loc[cn_change['is_hdel'], 'gistic_value'] = -2
+
+    return cn_change
 

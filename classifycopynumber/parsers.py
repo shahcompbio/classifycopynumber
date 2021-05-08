@@ -11,7 +11,7 @@ autosomes = [str(a) for a in range(1, 23)]
 
 
 def read_remixt_parsed_csv(filename):
-    cn = pd.read_csv(filename, sep='\t')
+    cn = pd.read_csv(filename, sep='\t', converters={'chromosome': str}, low_memory=False)
     cn['total_raw'] = cn['major_raw'] + cn['minor_raw']
 
     metadata_filename = os.path.join(os.path.dirname(filename), 'meta.yaml')
@@ -162,70 +162,76 @@ def read_gene_data(gtf):
 
     return data
 
-def _get_default_genes():
+
+def _get_gene_lists():
     meta = os.path.join(os.path.dirname(__file__), 'metadata')
 
     return {
         'amp': pkg_resources.resource_stream(__name__, 'metadata/census_amps.csv'),  
         'del': pkg_resources.resource_stream(__name__, 'metadata/census_dels.csv'),
+        'cancer_gene_census': pkg_resources.resource_stream(__name__, 'metadata/cancer_gene_census.csv'),
         'additional_genes': pkg_resources.resource_stream(__name__, 'metadata/additional_genes.csv'),
         'antigen_genes': pkg_resources.resource_stream(__name__, 'metadata/antigen_presenting_genes.csv'),
         'hr_genes': pkg_resources.resource_stream(__name__, 'metadata/hr_genes.txt'),
     }
 
 
-def compile_genes_of_interest(gene_regions, amp_genes='default', 
-    del_genes='default', 
-    additional_genes='default', 
-    antigen_genes='default',
-    hr_genes='default'):
+default_additional_gene_lists = ('additional_genes', 'antigen_genes', 'hr_genes')
 
-    if amp_genes == "default":
-       amp_genes =  _get_default_genes()["amp"]
 
-    if del_genes == "default":
-       del_genes =  _get_default_genes()["del"]
+def compile_genes_of_interest(additional_gene_lists=default_additional_gene_lists):
+    """ Compile a list of genes of interest.
 
-    if additional_genes == "default":
-       additional_genes =  _get_default_genes()["additional_genes"]
+    KwArgs:
+        additional (tuple): list of additional gene sets.
 
-    if antigen_genes == "default":
-       antigen_genes =  _get_default_genes()["antigen_genes"]
-       
-    if hr_genes == "default":
-       hr_genes =  _get_default_genes()["hr_genes"]
+    Returns:
+        pandas.DataFrame: table of genes
+    """
 
-    amp_genes = amp_genes = pd.read_csv(amp_genes, usecols=['Gene Symbol'])
-    del_genes = pd.read_csv(del_genes, usecols=['Gene Symbol'])
+    gene_lists = _get_gene_lists()
 
+    genes = []
+
+    amp_genes = pd.read_csv(gene_lists['amp'], usecols=['Gene Symbol']).rename(columns={'Gene Symbol': 'gene_name'})
     amp_genes['cn_type'] = 'amplification'
+    genes.append(amp_genes)
+
+    del_genes = pd.read_csv(gene_lists['del'], usecols=['Gene Symbol']).rename(columns={'Gene Symbol': 'gene_name'})
     del_genes['cn_type'] = 'deletion'
+    genes.append(amp_genes)
 
-    cgc_genes = pd.concat([amp_genes, del_genes], ignore_index=False)
-    cgc_genes = cgc_genes.rename(columns={'Gene Symbol': 'gene_name'})
+    cgc_genes = pd.read_csv(gene_lists['cancer_gene_census'], usecols=['Gene Symbol']).rename(columns={'Gene Symbol': 'gene_name'})
+    cgc_genes['cn_type'] = 'unspecified'
+    genes.append(cgc_genes)
 
-    if additional_genes:
-        cgc_genes = pd.concat([cgc_genes, pd.read_csv(additional_genes)])
-    if hr_genes:
+    for additional in additional_gene_lists:
+        genes.append(pd.read_csv(gene_lists[additional]))
 
-        cgc_genes = pd.concat([cgc_genes, pd.read_csv(hr_genes)])
-    if antigen_genes:
-        cgc_genes = pd.concat([cgc_genes, pd.read_csv(antigen_genes)])
+    genes = pd.concat(genes, ignore_index=True)
 
-    cgc_genes["gene_name"] = cgc_genes.gene_name.replace({'NSD3': 'WHSC1L1','MRE11': 'MRE11A','SEM1': 'SHFM1' })
+    genes['cn_type'] = genes['cn_type'].fillna('unspecified')
+    genes = genes.drop_duplicates()
 
-    gene_rename = {
-        'NSD3': 'WHSC1L1',
-        'MRE11': 'MRE11A',
-        'SEM1': 'SHFM1',
-    }
-    cgc_genes['gene_name'] = cgc_genes['gene_name'].apply(lambda a: gene_rename.get(a, a))
+    # HACK: remove IG, TCR genes
+    ig_genes = [
+        'IGH',
+        'IGK',
+        'IGL',
+        'TRA',
+        'TRB',
+        'TRD',
+    ]
+    genes = genes[~genes['gene_name'].isin(ig_genes)]
 
-    cgc_genes = cgc_genes.merge(gene_regions, how='left')
+    gene_rename_file = pkg_resources.resource_stream(__name__, 'metadata/renames.csv')
+    gene_rename = pd.read_csv(gene_rename_file).set_index('gene_name')['gtf_gene_name'].to_dict()
+    genes['gene_name'] = genes['gene_name'].apply(lambda a: gene_rename.get(a, a))
 
-    if cgc_genes['gene_start'].isnull().any():
-        raise Exception(cgc_genes[cgc_genes['gene_start'].isnull()])
+    # Reshape to one gene per row
+    genes = genes.set_index(['gene_name', 'cn_type']).assign(indicator=1)['indicator'].unstack(fill_value=0).reset_index()
+    genes['amplification_type'] = genes['amplification'] == 1
+    genes['deletion_type'] = genes['deletion'] == 1
+    genes = genes[['gene_name', 'amplification_type', 'deletion_type']]
 
-    assert not cgc_genes['gene_start'].isnull().any()
-    return cgc_genes
-
+    return genes
