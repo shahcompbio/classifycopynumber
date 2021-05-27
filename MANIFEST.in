@@ -4,6 +4,6 @@ include classifycopynumber/metadata/cancer_gene_census.csv
 include classifycopynumber/metadata/census_amps.csv
 include classifycopynumber/metadata/census_dels.csv
 include classifycopynumber/metadata/hr_genes.txt
-include classifycopynumber/metadata/hr_genes.txt
+include classifycopynumber/metadata/renames.csv
 include testdata/A90554A_reads.csv
 include testdata/hmmcopy_A90554A_gene_cn.csv
