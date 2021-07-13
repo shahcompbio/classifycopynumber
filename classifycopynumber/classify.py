@@ -22,10 +22,10 @@ def calculate_amp_percentile(cn, gene_cn):
     cn['cum_fraction_genome'] = 1 - cn['fraction_genome'].cumsum()
 
     # Search cumulative distribution for percentile of each genes total copy number
-    gene_cn = gene_cn[['gene_name', 'total_raw_mean']].dropna().drop_duplicates()
+    gene_cn = gene_cn[['gene_id', 'total_raw_mean']].dropna().drop_duplicates()
     gene_cn['amp_percentile'] = cn['cum_fraction_genome'].values[cn['total_raw'].searchsorted(gene_cn['total_raw_mean'])]
 
-    return gene_cn[['gene_name', 'amp_percentile']]
+    return gene_cn[['gene_id', 'amp_percentile']]
 
 
 def calculate_mean_cn(gene_cn, cn_cols):
@@ -41,7 +41,7 @@ def calculate_mean_cn(gene_cn, cn_cols):
 
     gene_cn = gene_cn.copy()
     normalize = (
-        gene_cn.groupby('gene_name')['overlap_width']
+        gene_cn.groupby('gene_id')['overlap_width']
         .sum().rename('sum_overlap_width').reset_index())
 
     weighted_cols = []
@@ -49,7 +49,7 @@ def calculate_mean_cn(gene_cn, cn_cols):
         gene_cn[f'{col}_weighted'] = gene_cn[col] * gene_cn['overlap_width']
         weighted_cols.append(f'{col}_weighted')
 
-    gene_cn = gene_cn.groupby(['gene_name'])[weighted_cols].sum().reset_index()
+    gene_cn = gene_cn.groupby(['gene_id'])[weighted_cols].sum().reset_index()
     gene_cn = gene_cn.merge(normalize)
 
     mean_cols = []
@@ -57,7 +57,7 @@ def calculate_mean_cn(gene_cn, cn_cols):
         gene_cn[f'{col}_mean'] = gene_cn[f'{col}_weighted'] / gene_cn['sum_overlap_width']
         mean_cols.append(f'{col}_mean')
 
-    gene_cn = gene_cn[['gene_name', 'sum_overlap_width'] + mean_cols]
+    gene_cn = gene_cn[['gene_id', 'sum_overlap_width'] + mean_cols]
 
     return gene_cn
 
@@ -76,14 +76,14 @@ def calculate_hdel_width(gene_cn, hdel_cn_threshold=0.5):
     """
 
     hdel_data = gene_cn[gene_cn['total_raw'] < hdel_cn_threshold].copy()
-    hdel_data = hdel_data.groupby(['gene_name'])['overlap_width'].sum().rename('hdel_width').reset_index()
+    hdel_data = hdel_data.groupby(['gene_id'])['overlap_width'].sum().rename('hdel_width').reset_index()
     hdel_data['hdel_width'] = hdel_data['hdel_width'].fillna(0).astype(int)
 
     return hdel_data
 
 
 def classify_cn_change(
-        cn, ploidy, genes,
+        cn, genes,
         hlamp_percentile_threshold=0.02,
         amp_log_change_threshold=1,
         hdel_overlap_threshold=10000,
@@ -95,12 +95,16 @@ def classify_cn_change(
 
     Args:
         cn (pandas.DataFrame): table of copy number values
-        ploidy (float): mean copy number across the genome
         genes (pandas.DataFrame): gene regions of interest
 
     KwArgs: filtering thresholds
 
     """
+    cn = cn[np.isfinite(cn['total_raw'])]
+
+    # Calculate ploidy
+    segment_length = cn['end'] - cn['start']
+    ploidy = (cn['total_raw'] * segment_length).sum() / segment_length.sum()
 
     # Calculate gene copy number overlaps
     cn_cols = ['total_raw', 'minor_raw']
@@ -118,7 +122,7 @@ def classify_cn_change(
 
     # Call HL amps as amplified type and percentile threshold
     amp_percentile = calculate_amp_percentile(cn, mean_cn)
-    amp_percentile = amp_percentile.merge(genes[['gene_name', 'amplification_type']], how='right')
+    amp_percentile = amp_percentile.merge(genes[['gene_id', 'amplification_type']], how='right')
     amp_percentile['is_hlamp'] = (
         amp_percentile['amplification_type'] &
         (amp_percentile['amp_percentile'] < hlamp_percentile_threshold))
@@ -126,7 +130,7 @@ def classify_cn_change(
 
     # Call HDels as deletion type and hdel overlap threshold
     hdel_width = calculate_hdel_width(gene_cn, hdel_cn_threshold=hdel_cn_threshold)
-    hdel_width = hdel_width.merge(genes[['gene_name', 'deletion_type']], how='right')
+    hdel_width = hdel_width.merge(genes[['gene_id', 'deletion_type']], how='right')
     hdel_width['hdel_width'] = hdel_width['hdel_width'].fillna(0)
     hdel_width['is_hdel'] = (
         hdel_width['deletion_type'] &
@@ -135,9 +139,9 @@ def classify_cn_change(
 
     # Compile list of CN change
     cn_change = (
-        genes.merge(mean_cn, on='gene_name', how='left')
-        .merge(amp_percentile, on='gene_name', how='left')
-        .merge(hdel_width, on='gene_name', how='left'))
+        genes.merge(mean_cn, on='gene_id', how='left')
+        .merge(amp_percentile, on='gene_id', how='left')
+        .merge(hdel_width, on='gene_id', how='left'))
 
     # Default state
     cn_change['gistic_value'] = 0

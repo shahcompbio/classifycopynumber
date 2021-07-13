@@ -20,16 +20,14 @@ def main(genes_gtf, cn_change_filename, remixt_h5_filename=None, remixt_parsed_c
 
     if remixt_parsed_csv is not None:
         cn, stats = classifycopynumber.parsers.read_remixt_parsed_csv(remixt_parsed_csv)
-        ploidy = stats['ploidy']
 
     if remixt_h5_filename is not None:
         cn, stats = classifycopynumber.parsers.read_remixt(remixt_h5_filename)
-        ploidy = stats['ploidy']
 
     elif len(hmmcopy_csv_filenames) > 0:
         if len(sample_ids) == 0:
             raise click.ClickException('sample_ids required if providing hmmcopy')
-        cn, ploidy = classifycopynumber.parsers.read_hmmcopy_files(hmmcopy_csv_filenames, sample_ids=sample_ids)
+        cn = classifycopynumber.parsers.read_hmmcopy_files(hmmcopy_csv_filenames, sample_ids=sample_ids)
 
     genes = classifycopynumber.parsers.read_gene_data(genes_gtf)
     genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest()
@@ -39,6 +37,6 @@ def main(genes_gtf, cn_change_filename, remixt_h5_filename=None, remixt_parsed_c
     if genes['gene_start'].isnull().any():
         raise Exception(genes[genes['gene_start'].isnull()])
 
-    cn_change = classifycopynumber.classify.classify_cn_change(cn, ploidy, genes)
+    cn_change = classifycopynumber.classify.classify_cn_change(cn, genes)
 
     cn_change.to_csv(cn_change_filename, index=False)
