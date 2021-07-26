@@ -151,17 +151,17 @@ def classify_cn_change(
 
     # Deleted state as LOH if possible otherwise log change threshold
     if 'is_loh' in cn_change:
-        cn_change.loc[cn_change['is_loh'], 'gistic_value'] = -1
+        cn_change.loc[cn_change['is_loh'].fillna(False), 'gistic_value'] = -1
         cn_change['has_loh'] = True
     else:
         cn_change.loc[cn_change['log_change'] < del_log_change_threshold, 'gistic_value'] = -1
         cn_change['has_loh'] = False
 
     # High level amplified state from amp call
-    cn_change.loc[cn_change['is_hlamp'], 'gistic_value'] = 2
+    cn_change.loc[cn_change['is_hlamp'].fillna(False), 'gistic_value'] = 2
 
     # Homozygous deleted state from amp call
-    cn_change.loc[cn_change['is_hdel'], 'gistic_value'] = -2
+    cn_change.loc[cn_change['is_hdel'].fillna(False), 'gistic_value'] = -2
 
     return cn_change
 
