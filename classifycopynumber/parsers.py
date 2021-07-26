@@ -199,7 +199,7 @@ def compile_genes_of_interest(additional_gene_lists=default_additional_gene_list
 
     del_genes = pd.read_csv(gene_lists['del'], usecols=['Gene Symbol']).rename(columns={'Gene Symbol': 'gene_name'})
     del_genes['cn_type'] = 'deletion'
-    genes.append(amp_genes)
+    genes.append(del_genes)
 
     cgc_genes = pd.read_csv(gene_lists['cancer_gene_census'], usecols=['Gene Symbol']).rename(columns={'Gene Symbol': 'gene_name'})
     cgc_genes['cn_type'] = 'unspecified'
