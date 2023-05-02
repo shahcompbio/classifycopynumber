@@ -145,12 +145,13 @@ def read_gene_data(gtf):
         names=['chromosome', 'gene_start', 'gene_end', 'info'],
         usecols=[0,3,4,8],
         converters={'chromosome': str},
+        comment='#', ## SHAH-4354
     )
 
     def extract_info(info):
         info_dict = {}
         for a in info.strip(' ').split('; '):
-            k, v = a.split(' ')
+            k, v = a.split(' ', 1) ## SHAH-4354
             info_dict[k] = v.strip(';').strip('"')
         return info_dict
 
