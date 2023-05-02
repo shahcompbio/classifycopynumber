@@ -32,7 +32,7 @@ def main(genes_gtf, cn_change_filename, remixt_h5_filename=None, remixt_parsed_c
     genes = classifycopynumber.parsers.read_gene_data(genes_gtf)
     genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest()
 
-    genes = genes.merge(genes_of_interest, how='right')
+    genes = genes.merge(genes_of_interest, how='outer')
 
     if genes['gene_start'].isnull().any():
         raise Exception(genes[genes['gene_start'].isnull()])
