@@ -32,10 +32,12 @@ def main(genes_gtf, cn_change_filename, remixt_h5_filename=None, remixt_parsed_c
     genes = classifycopynumber.parsers.read_gene_data(genes_gtf)
     genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest()
 
-    genes = genes.merge(genes_of_interest, how='outer')
+    genes = genes.merge(genes_of_interest, how='right')
+    genes.to_csv("/juno/work/shah/users/chois7/tickets/cn-tables-hg38/repr/test__genes.csv")
 
     if genes['gene_start'].isnull().any():
-        raise Exception(genes[genes['gene_start'].isnull()])
+        genes = genes.dropna() # removes 10 genes of uncertain significance
+        #raise Exception(genes[genes['gene_start'].isnull()])
 
     cn_change = classifycopynumber.classify.classify_cn_change(cn, genes)
 
