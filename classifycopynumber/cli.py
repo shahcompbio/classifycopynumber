@@ -33,7 +33,6 @@ def main(genes_gtf, cn_change_filename, remixt_h5_filename=None, remixt_parsed_c
     genes_of_interest = classifycopynumber.parsers.compile_genes_of_interest()
 
     genes = genes.merge(genes_of_interest, how='right')
-    genes.to_csv("/juno/work/shah/users/chois7/tickets/cn-tables-hg38/repr/test__genes.csv")
 
     if genes['gene_start'].isnull().any():
         genes = genes.dropna() # removes 10 genes of uncertain significance
