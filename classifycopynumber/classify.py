@@ -101,6 +101,9 @@ def classify_cn_change(
 
     """
     cn = cn[np.isfinite(cn['total_raw'])]
+    cn = cn[cn['length'] > 1e5] #
+    cn = cn[cn['minor_readcount'] > 100] #
+    cn['chromosome'] = cn['chromosome'].str.replace('chr', '') #
 
     # Calculate ploidy
     segment_length = cn['end'] - cn['start']
