@@ -174,10 +174,11 @@ def _get_gene_lists():
         'additional_genes': pkg_resources.resource_stream(__name__, 'metadata/additional_genes.csv'),
         'antigen_genes': pkg_resources.resource_stream(__name__, 'metadata/antigen_presenting_genes.csv'),
         'hr_genes': pkg_resources.resource_stream(__name__, 'metadata/hr_genes.txt'),
+        'hg38_genes': pkg_resources.resource_stream(__name__, 'metadata/hg38_genes.txt'),
     }
 
 
-default_additional_gene_lists = ('additional_genes', 'antigen_genes', 'hr_genes')
+default_additional_gene_lists = ('additional_genes', 'antigen_genes', 'hr_genes', 'hg38_genes')
 
 
 def compile_genes_of_interest(additional_gene_lists=default_additional_gene_lists):
