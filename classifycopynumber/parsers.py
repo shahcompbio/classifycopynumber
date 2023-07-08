@@ -231,6 +231,7 @@ def compile_genes_of_interest(additional_gene_lists=default_additional_gene_list
     genes['gene_name'] = genes['gene_name'].apply(lambda a: gene_rename.get(a, a))
 
     # Reshape to one gene per row
+    genes = genes.drop_duplicates()
     genes = genes.set_index(['gene_name', 'cn_type']).assign(indicator=1)['indicator'].unstack(fill_value=0).reset_index()
     genes['amplification_type'] = genes['amplification'] == 1
     genes['deletion_type'] = genes['deletion'] == 1
