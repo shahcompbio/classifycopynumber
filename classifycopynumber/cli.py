@@ -35,7 +35,8 @@ def main(genes_gtf, cn_change_filename, remixt_h5_filename=None, remixt_parsed_c
     genes = genes.merge(genes_of_interest, how='right')
 
     if genes['gene_start'].isnull().any():
-        raise Exception(genes[genes['gene_start'].isnull()])
+        genes = genes.dropna() # removes 10 genes of uncertain significance
+        #raise Exception(genes[genes['gene_start'].isnull()])
 
     cn_change = classifycopynumber.classify.classify_cn_change(cn, genes)
 

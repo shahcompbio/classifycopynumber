@@ -23,7 +23,8 @@ def calculate_amp_percentile(cn, gene_cn):
 
     # Search cumulative distribution for percentile of each genes total copy number
     gene_cn = gene_cn[['gene_id', 'total_raw_mean']].dropna().drop_duplicates()
-    gene_cn['amp_percentile'] = cn['cum_fraction_genome'].values[cn['total_raw'].searchsorted(gene_cn['total_raw_mean'])]
+    gene_raw_mean_ix = cn['total_raw'].searchsorted(gene_cn['total_raw_mean']) - 1 # [1, ..., n] - 1
+    gene_cn['amp_percentile'] = cn['cum_fraction_genome'].values[gene_raw_mean_ix]
 
     return gene_cn[['gene_id', 'amp_percentile']]
 
@@ -101,6 +102,9 @@ def classify_cn_change(
 
     """
     cn = cn[np.isfinite(cn['total_raw'])]
+    cn = cn[cn['length'] > 1e5] #
+    cn = cn[cn['minor_readcount'] > 100] #
+    cn['chromosome'] = cn['chromosome'].str.replace('chr', '') #
 
     # Calculate ploidy
     segment_length = cn['end'] - cn['start']
@@ -124,7 +128,7 @@ def classify_cn_change(
     amp_percentile = calculate_amp_percentile(cn, mean_cn)
     amp_percentile = amp_percentile.merge(genes[['gene_id', 'amplification_type']], how='right')
     amp_percentile['is_hlamp'] = (
-        amp_percentile['amplification_type'] &
+        #amp_percentile['amplification_type'] &
         (amp_percentile['amp_percentile'] < hlamp_percentile_threshold))
     amp_percentile = amp_percentile.drop(['amplification_type'], axis=1)
 
@@ -133,7 +137,7 @@ def classify_cn_change(
     hdel_width = hdel_width.merge(genes[['gene_id', 'deletion_type']], how='right')
     hdel_width['hdel_width'] = hdel_width['hdel_width'].fillna(0)
     hdel_width['is_hdel'] = (
-        hdel_width['deletion_type'] &
+        #hdel_width['deletion_type'] &
         (hdel_width['hdel_width'] > hdel_overlap_threshold))
     hdel_width = hdel_width.drop(['deletion_type'], axis=1)
 

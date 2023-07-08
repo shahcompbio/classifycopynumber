@@ -145,12 +145,13 @@ def read_gene_data(gtf):
         names=['chromosome', 'gene_start', 'gene_end', 'info'],
         usecols=[0,3,4,8],
         converters={'chromosome': str},
+        comment='#', ## SHAH-4354
     )
 
     def extract_info(info):
         info_dict = {}
         for a in info.strip(' ').split('; '):
-            k, v = a.split(' ')
+            k, v = a.split(' ', 1) ## SHAH-4354
             info_dict[k] = v.strip(';').strip('"')
         return info_dict
 
@@ -173,10 +174,11 @@ def _get_gene_lists():
         'additional_genes': pkg_resources.resource_stream(__name__, 'metadata/additional_genes.csv'),
         'antigen_genes': pkg_resources.resource_stream(__name__, 'metadata/antigen_presenting_genes.csv'),
         'hr_genes': pkg_resources.resource_stream(__name__, 'metadata/hr_genes.txt'),
+        'hg38_genes': pkg_resources.resource_stream(__name__, 'metadata/hg38_genes.txt'),
     }
 
 
-default_additional_gene_lists = ('additional_genes', 'antigen_genes', 'hr_genes')
+default_additional_gene_lists = ('additional_genes', 'antigen_genes', 'hr_genes', 'hg38_genes')
 
 
 def compile_genes_of_interest(additional_gene_lists=default_additional_gene_lists):
@@ -229,6 +231,7 @@ def compile_genes_of_interest(additional_gene_lists=default_additional_gene_list
     genes['gene_name'] = genes['gene_name'].apply(lambda a: gene_rename.get(a, a))
 
     # Reshape to one gene per row
+    genes = genes.drop_duplicates()
     genes = genes.set_index(['gene_name', 'cn_type']).assign(indicator=1)['indicator'].unstack(fill_value=0).reset_index()
     genes['amplification_type'] = genes['amplification'] == 1
     genes['deletion_type'] = genes['deletion'] == 1
